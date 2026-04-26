@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Facilitator — Hive Mind</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a18;
+      color: #fff;
+      font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+      padding: 32px 24px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 1rem; font-weight: 500; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 32px; }
+    h2 { font-size: 0.75rem; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.3); margin-bottom: 16px; }
+
+    .section { margin-bottom: 36px; }
+
+    .slider-row {
+      display: grid;
+      grid-template-columns: 100px 1fr 40px;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .slider-row label { font-size: 0.85rem; color: rgba(255,255,255,0.6); }
+    input[type=range] { width: 100%; accent-color: rgba(255,255,255,0.7); }
+    .val { font-size: 0.8rem; color: rgba(255,255,255,0.4); text-align: right; }
+
+    button {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      color: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.85rem;
+      padding: 10px 18px;
+      transition: background 0.2s;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+    button:hover { background: rgba(255,255,255,0.18); }
+    button.danger { border-color: rgba(255,100,80,0.4); }
+    button.danger:hover { background: rgba(255,100,80,0.2); }
+
+    .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .preset {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      color: rgba(255,255,255,0.6);
+      cursor: pointer;
+      font-size: 0.8rem;
+      padding: 6px 14px;
+      transition: all 0.2s;
+    }
+    .preset:hover { background: rgba(255,255,255,0.14); color: #fff; }
+
+    .status { font-size: 0.8rem; color: rgba(150,255,180,0.6); margin-top: 8px; min-height: 20px; }
+  </style>
+</head>
+<body>
+
+<h1>Facilitator Control</h1>
+
+<div class="section">
+  <h2>Presets</h2>
+  <div class="presets">
+    <div class="preset" data-preset="neutral">Neutral</div>
+    <div class="preset" data-preset="calm">Calm</div>
+    <div class="preset" data-preset="anxious">Anxious</div>
+    <div class="preset" data-preset="powerful">Powerful</div>
+    <div class="preset" data-preset="playful">Playful</div>
+    <div class="preset" data-preset="melancholy">Melancholy</div>
+    <div class="preset" data-preset="chaotic">Chaotic</div>
+    <div class="preset" data-preset="focused">Focused</div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Manual Controls</h2>
+
+  <div class="slider-row">
+    <label>Hue</label>
+    <input type="range" id="hue" min="0" max="360" step="1" value="200">
+    <span class="val" id="hue-val">200</span>
+  </div>
+  <div class="slider-row">
+    <label>Saturation</label>
+    <input type="range" id="saturation" min="0" max="1" step="0.01" value="0.6">
+    <span class="val" id="saturation-val">0.60</span>
+  </div>
+  <div class="slider-row">
+    <label>Brightness</label>
+    <input type="range" id="brightness" min="0" max="1" step="0.01" value="0.7">
+    <span class="val" id="brightness-val">0.70</span>
+  </div>
+  <div class="slider-row">
+    <label>Speed</label>
+    <input type="range" id="speed" min="0" max="1" step="0.01" value="0.3">
+    <span class="val" id="speed-val">0.30</span>
+  </div>
+  <div class="slider-row">
+    <label>Complexity</label>
+    <input type="range" id="complexity" min="0" max="1" step="0.01" value="0.4">
+    <span class="val" id="complexity-val">0.40</span>
+  </div>
+  <div class="slider-row">
+    <label>Size</label>
+    <input type="range" id="size" min="0.5" max="1.5" step="0.01" value="1.0">
+    <span class="val" id="size-val">1.00</span>
+  </div>
+  <div class="slider-row">
+    <label>Chaos</label>
+    <input type="range" id="chaos" min="0" max="1" step="0.01" value="0.2">
+    <span class="val" id="chaos-val">0.20</span>
+  </div>
+
+  <br>
+  <button id="apply">Apply to blob</button>
+  <div class="status" id="status"></div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+  const statusEl = document.getElementById('status');
+
+  const params = ['hue', 'saturation', 'brightness', 'speed', 'complexity', 'size', 'chaos'];
+
+  params.forEach(p => {
+    const el = document.getElementById(p);
+    const val = document.getElementById(`${p}-val`);
+    el.addEventListener('input', () => { val.textContent = parseFloat(el.value).toFixed(p === 'hue' ? 0 : 2); });
+  });
+
+  function getSliderValues() {
+    const obj = {};
+    params.forEach(p => { obj[p] = parseFloat(document.getElementById(p).value); });
+    return obj;
+  }
+
+  function setSliders(obj) {
+    params.forEach(p => {
+      if (obj[p] !== undefined) {
+        document.getElementById(p).value = obj[p];
+        document.getElementById(`${p}-val`).textContent = parseFloat(obj[p]).toFixed(p === 'hue' ? 0 : 2);
+      }
+    });
+  }
+
+  async function sendOverride(overrideParams) {
+    try {
+      await fetch('/override', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ params: overrideParams })
+      });
+      statusEl.textContent = 'Applied ✓';
+      setTimeout(() => { statusEl.textContent = ''; }, 2000);
+    } catch {
+      statusEl.textContent = 'Failed to connect';
+    }
+  }
+
+  document.getElementById('apply').addEventListener('click', () => sendOverride(getSliderValues()));
+
+  const PRESETS = {
+    neutral:   { hue: 200, saturation: 0.5, brightness: 0.6, speed: 0.3, complexity: 0.4, size: 1.0, chaos: 0.2 },
+    calm:      { hue: 200, saturation: 0.6, brightness: 0.75, speed: 0.12, complexity: 0.2, size: 1.0, chaos: 0.05 },
+    anxious:   { hue: 0,   saturation: 0.9, brightness: 0.65, speed: 0.92, complexity: 0.85, size: 1.1, chaos: 0.9 },
+    powerful:  { hue: 270, saturation: 0.8, brightness: 0.45, speed: 0.45, complexity: 0.5, size: 1.4, chaos: 0.12 },
+    playful:   { hue: 45,  saturation: 0.9, brightness: 0.85, speed: 0.72, complexity: 0.6, size: 0.9, chaos: 0.5 },
+    melancholy:{ hue: 220, saturation: 0.3, brightness: 0.28, speed: 0.08, complexity: 0.3, size: 0.8, chaos: 0.04 },
+    chaotic:   { hue: 320, saturation: 0.85, brightness: 0.7, speed: 1.0, complexity: 1.0, size: 1.2, chaos: 1.0 },
+    focused:   { hue: 180, saturation: 0.7, brightness: 0.6, speed: 0.2, complexity: 0.3, size: 1.05, chaos: 0.08 },
+  };
+
+  document.querySelectorAll('.preset').forEach(el => {
+    el.addEventListener('click', () => {
+      const preset = PRESETS[el.dataset.preset];
+      if (preset) { setSliders(preset); sendOverride(preset); }
+    });
+  });
+
+  socket.on('state', (state) => setSliders(state));
+</script>
+</body>
+</html>

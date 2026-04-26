@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>Hive Mind</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #050510;
+      color: #fff;
+      font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+      gap: 32px;
+    }
+
+    .blob-preview {
+      width: 120px;
+      height: 120px;
+    }
+
+    h1 {
+      font-size: 1.1rem;
+      font-weight: 300;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.7);
+      text-align: center;
+    }
+
+    p.sub {
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.35);
+      text-align: center;
+      line-height: 1.6;
+      max-width: 280px;
+    }
+
+    .input-area {
+      width: 100%;
+      max-width: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    textarea {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 12px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 1rem;
+      line-height: 1.5;
+      padding: 16px;
+      resize: none;
+      width: 100%;
+      min-height: 80px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    textarea::placeholder { color: rgba(255,255,255,0.25); }
+    textarea:focus { border-color: rgba(255,255,255,0.4); }
+
+    button {
+      background: rgba(255,255,255,0.9);
+      border: none;
+      border-radius: 12px;
+      color: #050510;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      padding: 16px;
+      transition: opacity 0.2s, transform 0.1s;
+      width: 100%;
+    }
+    button:active { transform: scale(0.98); opacity: 0.85; }
+    button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .feedback {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.4);
+      text-align: center;
+      min-height: 20px;
+      transition: color 0.3s;
+    }
+    .feedback.success { color: rgba(150,255,180,0.8); }
+    .feedback.error { color: rgba(255,120,100,0.8); }
+
+    .count {
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      color: rgba(255,255,255,0.2);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <canvas class="blob-preview" id="mini"></canvas>
+
+  <div>
+    <h1>Hive Mind</h1>
+  </div>
+
+  <p class="sub">Shape the blob on screen.<br>Describe how it should feel, look, or move.</p>
+
+  <div class="input-area">
+    <textarea id="prompt" placeholder="anxious · melancholy · playful · powerful · alive…" maxlength="120" rows="3"></textarea>
+    <button id="send">Shape it</button>
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <div class="count" id="count"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // Persistent session ID per browser
+    let sessionId = localStorage.getItem('hive-session');
+    if (!sessionId) {
+      sessionId = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+      localStorage.setItem('hive-session', sessionId);
+    }
+
+    const socket = io();
+    const sendBtn = document.getElementById('send');
+    const promptEl = document.getElementById('prompt');
+    const feedbackEl = document.getElementById('feedback');
+    const countEl = document.getElementById('count');
+    const mini = document.getElementById('mini');
+    const mctx = mini.getContext('2d');
+
+    mini.width = 120;
+    mini.height = 120;
+
+    let miniState = { hue: 200, saturation: 0.6, brightness: 0.7, speed: 0.3, complexity: 0.4, size: 1.0, chaos: 0.2 };
+    let miniTarget = { ...miniState };
+    let mt = 0;
+
+    function lerp(a, b, t) { return a + (b - a) * t; }
+    function noise(x, y, t, freq) {
+      return (Math.sin(x * freq + t * 1.1) * Math.cos(y * freq * 0.9 + t * 0.8) +
+              Math.sin(x * freq * 1.8 + t * 0.7 + 2.3) * Math.cos(y * freq * 1.6 + t * 1.4 + 1.7) * 0.5) / 1.5;
+    }
+
+    function drawMini() {
+      mt += 0.006 + miniState.speed * 0.02;
+      mctx.clearRect(0, 0, 120, 120);
+
+      const baseR = 38 * miniState.size;
+      const pts = [];
+      for (let i = 0; i <= 90; i++) {
+        const a = (i / 90) * Math.PI * 2;
+        const nx = Math.cos(a), ny = Math.sin(a);
+        const d = noise(nx, ny, mt, 1.2 + miniState.complexity * 2.5) * baseR * (0.25 + miniState.complexity * 0.3 + miniState.chaos * 0.25);
+        pts.push({ x: 60 + Math.cos(a) * (baseR + d), y: 60 + Math.sin(a) * (baseR + d) });
+      }
+
+      const h = miniState.hue, sat = Math.round(miniState.saturation * 100), bri = Math.round(30 + miniState.brightness * 55);
+
+      mctx.save();
+      mctx.filter = 'blur(8px)';
+      mctx.beginPath();
+      mctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) {
+        const p0 = pts[i - 1], p1 = pts[i];
+        mctx.quadraticCurveTo(p0.x, p0.y, (p0.x + p1.x) / 2, (p0.y + p1.y) / 2);
+      }
+      mctx.closePath();
+      mctx.fillStyle = `hsla(${h},${sat}%,${bri}%,0.4)`;
+      mctx.fill();
+      mctx.restore();
+
+      mctx.save();
+      mctx.filter = 'blur(1px)';
+      const g = mctx.createRadialGradient(60, 60, 0, 60, 60, baseR);
+      g.addColorStop(0, `hsla(${h},${sat}%,${Math.min(bri + 25, 95)}%,0.95)`);
+      g.addColorStop(1, `hsla(${(h + 40) % 360},${sat}%,${bri}%,0.6)`);
+      mctx.beginPath();
+      mctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) {
+        const p0 = pts[i - 1], p1 = pts[i];
+        mctx.quadraticCurveTo(p0.x, p0.y, (p0.x + p1.x) / 2, (p0.y + p1.y) / 2);
+      }
+      mctx.closePath();
+      mctx.fillStyle = g;
+      mctx.fill();
+      mctx.restore();
+
+      for (const k of Object.keys(miniState)) {
+        if (typeof miniState[k] === 'number') miniState[k] = lerp(miniState[k], miniTarget[k], 0.03);
+      }
+      requestAnimationFrame(drawMini);
+    }
+
+    socket.on('state', (state) => {
+      miniTarget = { hue: state.hue, saturation: state.saturation, brightness: state.brightness, speed: state.speed, complexity: state.complexity, size: state.size, chaos: state.chaos };
+      if (state.promptCount !== undefined) {
+        countEl.textContent = `${state.promptCount} contribution${state.promptCount !== 1 ? 's' : ''} so far`;
+      }
+    });
+
+    drawMini();
+
+    async function submit() {
+      const text = promptEl.value.trim();
+      if (!text) return;
+
+      sendBtn.disabled = true;
+      feedbackEl.className = 'feedback';
+      feedbackEl.textContent = '…';
+
+      try {
+        const res = await fetch('/prompt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, sessionId })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          feedbackEl.textContent = `"${data.label}" — the blob felt that`;
+          feedbackEl.className = 'feedback success';
+          promptEl.value = '';
+        } else {
+          feedbackEl.textContent = data.error || 'Something went wrong';
+          feedbackEl.className = 'feedback error';
+        }
+      } catch {
+        feedbackEl.textContent = 'Connection error';
+        feedbackEl.className = 'feedback error';
+      }
+
+      setTimeout(() => { sendBtn.disabled = false; }, 3000);
+    }
+
+    sendBtn.addEventListener('click', submit);
+    promptEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
+    });
+  </script>
+</body>
+</html>
