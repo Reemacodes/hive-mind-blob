@@ -6,54 +6,128 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #050510; overflow: hidden; width: 100vw; height: 100vh; cursor: none; }
-    canvas { display: block; }
+    canvas { display: block; position: absolute; top: 0; left: 0; }
 
-    #label {
+    /* ── Active word (big, center-bottom) ──────────── */
+    #label-wrap {
       position: fixed;
-      bottom: 60px;
+      bottom: 12%;
       left: 50%;
-      transform: translateX(-50%);
-      font-family: 'Inter', 'Helvetica Neue', sans-serif;
-      font-size: 1.1rem;
-      font-weight: 300;
-      letter-spacing: 0.25em;
-      text-transform: uppercase;
-      color: rgba(255,255,255,0.45);
-      opacity: 0;
-      transition: opacity 0.5s ease;
+      transform: translateX(calc(-50% - 136px));
+      text-align: center;
       pointer-events: none;
+      z-index: 50;
+    }
+    #label {
+      font-family: 'Inter', 'Helvetica Neue', sans-serif;
+      font-size: clamp(2rem, 5vw, 3.8rem);
+      font-weight: 200;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.88);
+      text-shadow: 0 0 60px rgba(255,255,255,0.25);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      white-space: nowrap;
     }
     #label.visible { opacity: 1; }
 
     #count {
-      position: fixed;
-      bottom: 28px;
-      left: 50%;
-      transform: translateX(-50%);
       font-family: 'Inter', 'Helvetica Neue', sans-serif;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       font-weight: 300;
-      letter-spacing: 0.15em;
-      color: rgba(255,255,255,0.18);
+      letter-spacing: 0.2em;
+      color: rgba(255,255,255,0.2);
+      margin-top: 10px;
       pointer-events: none;
     }
 
-    #sound-hint {
+    /* ── QR code corner ────────────────────────────── */
+    #qr-corner {
       position: fixed;
-      top: 24px;
-      right: 28px;
-      font-family: 'Inter', 'Helvetica Neue', sans-serif;
-      font-size: 0.7rem;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: rgba(255,255,255,0.25);
-      pointer-events: none;
-      transition: opacity 0.4s ease;
+      bottom: 28px;
+      left: 28px;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
     }
+    #qr-hint {
+      font-family: 'Inter', 'Helvetica Neue', sans-serif;
+      font-size: 0.6rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.2);
+    }
+    #qr-code canvas, #qr-code img { border-radius: 6px; }
+
+    /* ── Milestone flash ───────────────────────────── */
+    #milestone-flash {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(calc(-50% - 136px), -50%);
+      font-family: 'Inter', 'Helvetica Neue', sans-serif;
+      font-size: clamp(1rem, 3vw, 2rem);
+      font-weight: 200;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.7);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+      z-index: 60;
+      white-space: nowrap;
+    }
+    #milestone-flash.visible { opacity: 1; }
+
+    /* ── Frozen indicator ──────────────────────────── */
+    #frozen-bar {
+      position: fixed;
+      top: 0; left: 0; right: 272px;
+      height: 3px;
+      background: rgba(100,180,255,0.5);
+      display: none;
+      z-index: 300;
+    }
+
+    /* ── Activation overlay ────────────────────────── */
+    #activate-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(5,5,16,0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      z-index: 500;
+      cursor: pointer;
+    }
+    #activate-overlay p {
+      font-family: 'Inter', 'Helvetica Neue', sans-serif;
+      font-size: 0.75rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+    }
+    #activate-overlay .pulse-ring {
+      width: 80px; height: 80px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 50%;
+      animation: ring-pulse 2s ease-in-out infinite;
+    }
+    @keyframes ring-pulse {
+      0%, 100% { transform: scale(1); opacity: 0.4; }
+      50% { transform: scale(1.3); opacity: 0.1; }
+    }
+
+    /* ── Mute button ───────────────────────────────── */
     #mute-btn {
       position: fixed;
       top: 20px;
-      right: 24px;
+      left: 24px;
       background: rgba(255,255,255,0.07);
       border: 1px solid rgba(255,255,255,0.12);
       border-radius: 8px;
@@ -66,31 +140,219 @@
       padding: 6px 12px;
       display: none;
       transition: background 0.2s, color 0.2s;
+      z-index: 200;
     }
     #mute-btn:hover { background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.7); }
+
+    #reset-btn {
+      position: fixed;
+      top: 20px;
+      right: 296px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      color: rgba(255,255,255,0.35);
+      cursor: pointer;
+      font-family: 'Inter', 'Helvetica Neue', sans-serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 6px 12px;
+      transition: background 0.2s, color 0.2s;
+      z-index: 200;
+    }
+    #reset-btn:hover { background: rgba(255,60,60,0.25); color: rgba(255,120,100,0.9); border-color: rgba(255,60,60,0.3); }
+
+    #sound-hint {
+      position: fixed;
+      top: 26px;
+      left: 28px;
+      font-family: 'Inter', 'Helvetica Neue', sans-serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.2);
+      pointer-events: none;
+      z-index: 200;
+    }
+
+    /* ── Chat sidebar ──────────────────────────────── */
+    #chat-panel {
+      position: fixed;
+      top: 0; right: 0;
+      width: 272px; height: 100vh;
+      background: rgba(5, 5, 16, 0.72);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-left: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      flex-direction: column;
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    #chat-header {
+      padding: 18px 18px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      flex-shrink: 0;
+    }
+    #chat-title {
+      font-family: 'Inter', 'Helvetica Neue', sans-serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.25);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .live-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #ff4444;
+      animation: pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(0.7); }
+    }
+    #chat-queue {
+      font-family: 'Inter', 'Helvetica Neue', sans-serif;
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      color: rgba(255,255,255,0.15);
+      margin-top: 5px;
+    }
+
+    #chat-list {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 8px 0 12px;
+      gap: 0;
+    }
+
+    .chat-item {
+      padding: 9px 16px 9px 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      animation: slideIn 0.3s ease;
+      border-left: 2px solid transparent;
+      transition: opacity 1.5s ease, border-color 0.3s ease;
+    }
+    .chat-item.fresh { border-left-color: rgba(255,255,255,0.2); }
+    @keyframes slideIn {
+      from { transform: translateY(14px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    .chat-text-col { flex: 1; min-width: 0; }
+    .chat-input {
+      font-family: 'Inter', 'Helvetica Neue', sans-serif;
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.35;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .chat-label {
+      font-family: 'Inter', 'Helvetica Neue', sans-serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.3);
+      margin-top: 2px;
+    }
   </style>
 </head>
 <body>
   <canvas id="c"></canvas>
-  <div id="label"></div>
-  <div id="count">0 contributions</div>
-  <div id="sound-hint">click for sound</div>
-  <button id="mute-btn">♪ on</button>
 
+  <div id="label-wrap">
+    <div id="label"></div>
+    <div id="count">0 contributions</div>
+  </div>
+
+  <div id="milestone-flash"></div>
+  <div id="frozen-bar"></div>
+
+  <div id="qr-corner">
+    <div id="qr-hint">join at</div>
+    <div id="qr-code"></div>
+  </div>
+
+  <button id="mute-btn">♪ on</button>
+  <button id="reset-btn">Reset</button>
+
+  <div id="activate-overlay">
+    <div class="pulse-ring"></div>
+    <p>tap to activate</p>
+  </div>
+
+  <!-- Chat sidebar -->
+  <div id="chat-panel">
+    <div id="chat-header">
+      <div id="chat-title"><div class="live-dot"></div> Live</div>
+      <div id="chat-queue"></div>
+    </div>
+    <div id="chat-list"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const canvas = document.getElementById('c');
-    const ctx    = canvas.getContext('2d');
-    const labelEl    = document.getElementById('label');
-    const countEl    = document.getElementById('count');
-    const soundHint  = document.getElementById('sound-hint');
-    const muteBtn    = document.getElementById('mute-btn');
-    let muted = false;
+    const canvas      = document.getElementById('c');
+    const ctx         = canvas.getContext('2d');
+    const labelEl     = document.getElementById('label');
+    const countEl     = document.getElementById('count');
+    const muteBtn     = document.getElementById('mute-btn');
+    const chatList    = document.getElementById('chat-list');
+    const chatQueue   = document.getElementById('chat-queue');
+    const milestoneEl = document.getElementById('milestone-flash');
+    const frozenBar   = document.getElementById('frozen-bar');
+    const activateOverlay = document.getElementById('activate-overlay');
+
+    let milestoneFlash = null; // { startTime, count }
+    let isFrozen = false;
+
+    // QR code — fetch network URL from server
+    fetch('/config').then(r => r.json()).then(({ audienceUrl }) => {
+      new QRCode(document.getElementById('qr-code'), {
+        text: audienceUrl,
+        width: 180, height: 180,
+        colorDark: '#ffffff', colorLight: '#050510',
+        correctLevel: QRCode.CorrectLevel.M,
+      });
+      // Show URL text below QR
+      const urlEl = document.createElement('div');
+      urlEl.style.cssText = 'font-family:monospace;font-size:0.55rem;color:rgba(255,255,255,0.25);letter-spacing:0.05em;text-align:center;margin-top:4px;max-width:180px;word-break:break-all;';
+      urlEl.textContent = audienceUrl.replace(/^https?:\/\//, '');
+      document.getElementById('qr-corner').appendChild(urlEl);
+    }).catch(() => {});
+
+    // Activation overlay — one click initialises audio and removes itself
+    activateOverlay.addEventListener('click', () => {
+      initAudio();
+      activateOverlay.style.transition = 'opacity 0.6s';
+      activateOverlay.style.opacity = '0';
+      setTimeout(() => activateOverlay.remove(), 700);
+    });
+
+    const SIDEBAR_W = 272;
+    let muted = true; // start muted; overlay click will init + unmute
 
     let W, H;
+    const DPR = window.devicePixelRatio || 1;
     function resize() {
-      W = canvas.width  = window.innerWidth;
-      H = canvas.height = window.innerHeight;
+      W = window.innerWidth;
+      H = window.innerHeight;
+      canvas.width  = W * DPR;
+      canvas.height = H * DPR;
+      canvas.style.width  = W + 'px';
+      canvas.style.height = H + 'px';
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     }
     window.addEventListener('resize', resize);
     resize();
@@ -98,8 +360,8 @@
     // ── Blob state ────────────────────────────────────────────────────────────
     const KEYS = ['hue','saturation','brightness','speed','complexity','size','chaos'];
 
-    let current = { hue:200, saturation:0.5, brightness:0.6, speed:0.25, complexity:0.35, size:1.0, chaos:0.15 };
-    let target  = { ...current };
+    let current = { hue:200, saturation:0.45, brightness:0.55, speed:0.1, complexity:0.15, size:0.3, chaos:0.05 };
+    let target  = { ...current, rainbow: false, emoji: '', label: '' };
     let vel     = { hue:0, saturation:0, brightness:0, speed:0, complexity:0, size:0, chaos:0 };
 
     const SPRING_K = 0.055;
@@ -121,19 +383,31 @@
       current.hue = ((current.hue % 360) + 360) % 360;
     }
 
-    // ── Blob position (bouncing around the screen) ────────────────────────────
-    let bx = W / 2, by = H / 2;
+    // ── Rainbow mode ──────────────────────────────────────────────────────────
+    let rainbowT = 0;
+    function getDrawHue() {
+      if (target.rainbow) {
+        rainbowT += 1.8;
+        return rainbowT % 360;
+      }
+      return current.hue;
+    }
+
+    // ── Blob position (bouncing) ──────────────────────────────────────────────
+    let bx, by;
     let bvx = 0.8, bvy = 0.55;
 
-    // Squash & stretch state
+    function initPosition() {
+      bx = (W - SIDEBAR_W) / 2;
+      by = H / 2;
+    }
+    initPosition();
+
     let sqX = 1, sqY = 1, sqVX = 0, sqVY = 0;
     const SQ_K = 0.14, SQ_DAMP = 0.6;
 
-    // Breathing state — slow irregular pulse
     let breathPhase = 0, breathScale = 1;
-
     function updateBreath(s) {
-      // Irregular rhythm: two sine waves at slightly different speeds
       breathPhase += 0.012 + s.speed * 0.008;
       const slow = Math.sin(breathPhase * 0.7);
       const fast = Math.sin(breathPhase * 1.3 + 1.2) * 0.3;
@@ -146,105 +420,279 @@
       sqVX = 0; sqVY = 0;
     }
 
-    function updateSquash(s) {
-      // Spring squash back to 1
+    function updateSquash() {
       sqVX = sqVX * SQ_DAMP + (1 - sqX) * SQ_K;
       sqVY = sqVY * SQ_DAMP + (1 - sqY) * SQ_K;
       sqX += sqVX;
       sqY += sqVY;
-
     }
 
     function updatePosition(s) {
       const spd = 0.4 + s.speed * 2.8;
-
-      const mag = Math.sqrt(bvx * bvx + bvy * bvy) || 1;
-      bvx = (bvx / mag) * spd;
-      bvy = (bvy / mag) * spd;
-
+      const mag = Math.sqrt(bvx*bvx + bvy*bvy) || 1;
+      bvx = (bvx/mag) * spd;
+      bvy = (bvy/mag) * spd;
       bx += bvx;
       by += bvy;
 
-      const margin = Math.min(W, H) * 0.18 * s.size;
+      const margin = Math.min(W - SIDEBAR_W, H) * 0.18 * s.size;
+      if (bx < margin)               { bx = margin;            bvx =  Math.abs(bvx); triggerSquash('x'); }
+      if (bx > W - SIDEBAR_W - margin){ bx = W - SIDEBAR_W - margin; bvx = -Math.abs(bvx); triggerSquash('x'); }
+      if (by < margin)               { by = margin;            bvy =  Math.abs(bvy); triggerSquash('y'); }
+      if (by > H - margin)           { by = H - margin;        bvy = -Math.abs(bvy); triggerSquash('y'); }
+    }
 
-      if (bx < margin)     { bx = margin;     bvx =  Math.abs(bvx); triggerSquash('x'); }
-      if (bx > W - margin) { bx = W - margin; bvx = -Math.abs(bvx); triggerSquash('x'); }
-      if (by < margin)     { by = margin;      bvy =  Math.abs(bvy); triggerSquash('y'); }
-      if (by > H - margin) { by = H - margin;  bvy = -Math.abs(bvy); triggerSquash('y'); }
+    // ── Permanent shape DNA — accumulates with every prompt, never resets ─────
+    let permSeed = { x: 0, y: 0 };
+    let permWarp = 0;
+    let permanentSizeBoost = 0; // grows with each prompt, making the blob larger over time
+    let impressions = [];
+
+    function evolveDNA() {
+      permSeed.x += (Math.random() - 0.5) * 8;
+      permSeed.y += (Math.random() - 0.5) * 8;
+      permWarp   += (Math.random() - 0.5) * 0.6;
+
+      // Grow the blob permanently — sized for ~100 prompts to reach full growth
+      permanentSizeBoost = Math.min(permanentSizeBoost + 0.008, 0.8);
+
+      // One impression per prompt — subtle, cumulative over many contributions
+      impressions.push({
+        freq:  2 + Math.floor(Math.random() * 5),
+        phase: Math.random() * Math.PI * 2,
+        amp:   0.04 + Math.random() * 0.07,
+      });
+      if (impressions.length > 40) impressions.splice(0, impressions.length - 40);
+    }
+
+    // ── Slime mold nodes + tendrils ───────────────────────────────────────────
+    let cells = [];
+    const MAX_CELLS = 60;
+    let spawnEnergy = 0;      // accumulates from prompts, drains into cell spawns
+    let lastActivityAt = 0;   // tracks when last prompt came in
+
+    function spawnCell() {
+      if (cells.length >= MAX_CELLS) return; // never remove old cells
+      const angle = Math.random() * Math.PI * 2;
+      const surfR = Math.min(W - SIDEBAR_W, H) * 0.25 * current.size * (1 + permanentSizeBoost) * 0.8;
+      const spd   = 0.2 + Math.random() * 0.35;
+
+      // Tendril: stable bezier control point offset (fixed at spawn)
+      const cpOffX = (Math.random() - 0.5) * 120;
+      const cpOffY = (Math.random() - 0.5) * 120;
+
+      // Branch off tendril: angle + length fixed at spawn
+      const branchSide   = Math.random() > 0.5 ? 1 : -1;
+      const branchAngle  = angle + branchSide * (0.5 + Math.random() * 0.8);
+      const branchLen    = 40 + Math.random() * 70;
+      const branchT      = 0.45 + Math.random() * 0.25; // where along tendril
+
+      // Sub-branches (2 per tendril for fractal feel)
+      const subbranches = Array.from({ length: 2 }, () => ({
+        side:  Math.random() > 0.5 ? 1 : -1,
+        tOff:  Math.random() * 0.4,
+        len:   15 + Math.random() * 35,
+      }));
+
+      cells.push({
+        x: bx + Math.cos(angle) * surfR,
+        y: by + Math.sin(angle) * surfR,
+        vx: Math.cos(angle) * spd,
+        vy: Math.sin(angle) * spd,
+        phase: Math.random() * 120,
+        born: Date.now(),
+        sizeMult: 0.14 + Math.random() * 0.20,
+        hueOff: (Math.random() - 0.5) * 30,
+        cpOffX, cpOffY,
+        branchAngle, branchLen, branchT,
+        subbranches,
+      });
+    }
+
+    // Draw a tendril (bezier vein) from core to satellite node
+    function drawTendril(cell, opacity, drawHue) {
+      const h   = ((drawHue + cell.hueOff) % 360 + 360) % 360;
+      const sat = Math.round(current.saturation * 80);
+      const bri = Math.round(50 + current.brightness * 40);
+      const col = `hsla(${h},${sat}%,${bri}%,`;
+
+      // Tendril origin: edge of main blob toward this cell
+      const toAngle = Math.atan2(cell.y - by, cell.x - bx);
+      const coreR   = Math.min(W - SIDEBAR_W, H) * 0.25 * current.size * (1 + permanentSizeBoost) * 0.45;
+      const sx = bx + Math.cos(toAngle) * coreR;
+      const sy = by + Math.sin(toAngle) * coreR;
+      const ex = cell.x, ey = cell.y;
+      const cpx = (sx + ex) / 2 + cell.cpOffX;
+      const cpy = (sy + ey) / 2 + cell.cpOffY;
+
+      ctx.save();
+      ctx.globalAlpha = opacity * 0.65;
+      ctx.filter = 'blur(0.8px)';
+      ctx.lineCap = 'round';
+
+      // Main vein — slightly glowing
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.quadraticCurveTo(cpx, cpy, ex, ey);
+      ctx.strokeStyle = col + '0.7)';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // Glow pass
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.quadraticCurveTo(cpx, cpy, ex, ey);
+      ctx.strokeStyle = col + '0.18)';
+      ctx.lineWidth = 12;
+      ctx.stroke();
+
+      // Branch point on bezier at branchT
+      const bt  = cell.branchT;
+      const bpx = (1-bt)*(1-bt)*sx + 2*(1-bt)*bt*cpx + bt*bt*ex;
+      const bpy = (1-bt)*(1-bt)*sy + 2*(1-bt)*bt*cpy + bt*bt*ey;
+      const btx = bpx + Math.cos(cell.branchAngle) * cell.branchLen;
+      const bty = bpy + Math.sin(cell.branchAngle) * cell.branchLen;
+
+      // Branch vein
+      const branchWobble = Math.sin(cell.phase) * 12;
+      ctx.beginPath();
+      ctx.moveTo(bpx, bpy);
+      ctx.quadraticCurveTo(
+        (bpx + btx) / 2 + branchWobble,
+        (bpy + bty) / 2 - branchWobble * 0.5,
+        btx, bty
+      );
+      ctx.strokeStyle = col + '0.45)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      // Node at branch tip
+      ctx.filter = 'blur(2px)';
+      ctx.beginPath();
+      ctx.arc(btx, bty, 6 + cell.branchLen * 0.08, 0, Math.PI * 2);
+      ctx.fillStyle = col + '0.6)';
+      ctx.fill();
+      ctx.filter = 'none';
+      ctx.beginPath();
+      ctx.arc(btx, bty, 4, 0, Math.PI * 2);
+      ctx.fillStyle = col + '0.85)';
+      ctx.fill();
+
+      // Sub-branches off main vein
+      for (const sub of cell.subbranches) {
+        const st  = bt + sub.tOff;
+        if (st >= 1) continue;
+        const spx2 = (1-st)*(1-st)*sx + 2*(1-st)*st*cpx + st*st*ex;
+        const spy2 = (1-st)*(1-st)*sy + 2*(1-st)*st*cpy + st*st*ey;
+        const sa   = cell.branchAngle + sub.side * (Math.PI * 0.4);
+        ctx.beginPath();
+        ctx.moveTo(spx2, spy2);
+        ctx.lineTo(spx2 + Math.cos(sa)*sub.len, spy2 + Math.sin(sa)*sub.len);
+        ctx.strokeStyle = col + '0.3)';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+        // Tiny tip node
+        ctx.beginPath();
+        ctx.arc(spx2 + Math.cos(sa)*sub.len, spy2 + Math.sin(sa)*sub.len, 3, 0, Math.PI*2);
+        ctx.fillStyle = col + '0.55)';
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
+    // Draw satellite node (compact, textured)
+    function drawCell(cell, drawHue) {
+      const age = Date.now() - cell.born;
+      const GROW_MS = 1800;
+      const growFactor = Math.min(age / GROW_MS, 1.0);
+      const opacity = growFactor;
+      if (opacity <= 0) return;
+
+      // Draw tendril first (behind node)
+      drawTendril(cell, opacity, drawHue);
+
+      const r   = Math.min(W - SIDEBAR_W, H) * 0.25 * current.size * (1 + permanentSizeBoost) * cell.sizeMult * growFactor;
+      const h   = ((drawHue + cell.hueOff) % 360 + 360) % 360;
+      const sat = Math.round(current.saturation * 100);
+      const bri = Math.round(30 + current.brightness * 55);
+
+      ctx.save();
+      ctx.globalAlpha = opacity;
+
+      // Node glow
+      ctx.filter = `blur(${20 + r * 0.4}px)`;
+      ctx.beginPath();
+      ctx.arc(cell.x, cell.y, r * 1.1, 0, Math.PI * 2);
+      ctx.fillStyle = `hsla(${h},${sat}%,${bri}%,0.25)`;
+      ctx.fill();
+
+      // Node body — use noise for rough organic edge
+      const pts = [], n = 80, ct = t + cell.phase;
+      for (let i = 0; i <= n; i++) {
+        const a  = (i / n) * Math.PI * 2;
+        const nx = Math.cos(a), ny = Math.sin(a);
+        const d  = noise(nx + permSeed.x * 0.3, ny + permSeed.y * 0.3, ct, 2.5 + current.complexity * 3) * r * (0.15 + current.chaos * 0.4);
+        pts.push({ x: cell.x + Math.cos(a)*(r+d), y: cell.y + Math.sin(a)*(r+d) });
+      }
+      ctx.filter = 'none';
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) {
+        const p0 = pts[i-1], p1 = pts[i];
+        ctx.quadraticCurveTo(p0.x, p0.y, (p0.x+p1.x)/2, (p0.y+p1.y)/2);
+      }
+      ctx.closePath();
+      const g = ctx.createRadialGradient(cell.x, cell.y, 0, cell.x, cell.y, r);
+      g.addColorStop(0,   `hsla(${h},${sat}%,${Math.min(bri+30,95)}%,0.9)`);
+      g.addColorStop(0.7, `hsla(${h},${sat}%,${bri}%,0.7)`);
+      g.addColorStop(1,   `hsla(${h},${sat}%,${Math.max(bri-15,5)}%,0.3)`);
+      ctx.fillStyle = g;
+      ctx.fill();
+
+      ctx.restore();
     }
 
     // ── Sound ─────────────────────────────────────────────────────────────────
-    let _ac = null, _osc1 = null, _osc2 = null, _gainNode = null, _filter = null, _lfo = null, _lfoGain = null;
+    let _ac=null, _osc1=null, _osc2=null, _gainNode=null, _filter=null, _lfo=null, _lfoGain=null;
 
     function initAudio() {
       if (_ac) return;
       try {
         _ac = new (window.AudioContext || window.webkitAudioContext)();
-
         _gainNode = _ac.createGain();
         _gainNode.gain.value = 0.0;
-
         _filter = _ac.createBiquadFilter();
         _filter.type = 'lowpass';
         _filter.frequency.value = 500;
         _filter.Q.value = 2.5;
-
-        _osc1 = _ac.createOscillator();
-        _osc1.type = 'sine';
-        _osc1.frequency.value = 80;
-
-        _osc2 = _ac.createOscillator();
-        _osc2.type = 'sine';
-        _osc2.frequency.value = 120;
-
-        // Slow LFO for tremolo
-        _lfo = _ac.createOscillator();
-        _lfo.type = 'sine';
-        _lfo.frequency.value = 3;
-        _lfoGain = _ac.createGain();
-        _lfoGain.gain.value = 0.02;
-        _lfo.connect(_lfoGain);
-        _lfoGain.connect(_gainNode.gain);
-
-        _osc1.connect(_filter);
-        _osc2.connect(_filter);
-        _filter.connect(_gainNode);
-        _gainNode.connect(_ac.destination);
-
-        _osc1.start();
-        _osc2.start();
-        _lfo.start();
-
-        // Fade in
+        _osc1 = _ac.createOscillator(); _osc1.type = 'sine'; _osc1.frequency.value = 80;
+        _osc2 = _ac.createOscillator(); _osc2.type = 'sine'; _osc2.frequency.value = 120;
+        _lfo = _ac.createOscillator(); _lfo.type = 'sine'; _lfo.frequency.value = 3;
+        _lfoGain = _ac.createGain(); _lfoGain.gain.value = 0.02;
+        _lfo.connect(_lfoGain); _lfoGain.connect(_gainNode.gain);
+        _osc1.connect(_filter); _osc2.connect(_filter);
+        _filter.connect(_gainNode); _gainNode.connect(_ac.destination);
+        _osc1.start(); _osc2.start(); _lfo.start();
+        muted = false;
         _gainNode.gain.setTargetAtTime(0.1, _ac.currentTime, 1.5);
-
-        soundHint.style.opacity = '0';
         muteBtn.style.display = 'block';
-      } catch(e) {
-        console.warn('Audio init failed:', e);
-      }
+        muteBtn.textContent = '♪ on';
+      } catch(e) { console.warn('Audio init failed:', e); }
     }
 
     function updateSound(s) {
       if (!_ac || !_osc1) return;
       const now = _ac.currentTime;
-
-      // Pitch from hue: 50–180 Hz drone
       const freq = 50 + (s.hue / 360) * 130;
-      _osc1.frequency.setTargetAtTime(freq,        now, 1.2);
-      _osc2.frequency.setTargetAtTime(freq * 1.502, now, 1.2); // perfect fifth
-
-      // Volume from brightness (skip if muted)
+      _osc1.frequency.setTargetAtTime(freq,         now, 1.2);
+      _osc2.frequency.setTargetAtTime(freq * 1.502, now, 1.2);
       if (!muted) {
         const vol = 0.05 + s.brightness * 0.13;
         _gainNode.gain.setTargetAtTime(vol, now, 0.6);
       }
-
-      // Filter opens with complexity + chaos
-      _filter.frequency.setTargetAtTime(150 + s.complexity * 1600 + s.chaos * 900, now, 0.4);
+      _filter.frequency.setTargetAtTime(150 + s.complexity*1600 + s.chaos*900, now, 0.4);
       _filter.Q.setTargetAtTime(1.5 + s.chaos * 7, now, 0.4);
-
-      // LFO tremolo speed from speed param
       _lfo.frequency.setTargetAtTime(0.5 + s.speed * 8, now, 0.6);
       _lfoGain.gain.setTargetAtTime(0.015 + s.chaos * 0.04, now, 0.5);
     }
@@ -262,98 +710,94 @@
         muteBtn.style.color = 'rgba(255,255,255,0.35)';
       }
     }
-
-    muteBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleMute(); });
-
-    // M key also toggles mute
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'm' || e.key === 'M') toggleMute();
-    });
-
-    document.addEventListener('click',      initAudio, { once: true });
-    document.addEventListener('touchstart', initAudio, { once: true });
+    muteBtn.addEventListener('click', e => { e.stopPropagation(); toggleMute(); });
+    document.addEventListener('keydown', e => { if (e.key==='m'||e.key==='M') toggleMute(); });
 
     // ── Noise ─────────────────────────────────────────────────────────────────
-    function noise(x, y, t, freq, oct = 4) {
-      let v = 0, a = 1, tot = 0;
-      for (let i = 0; i < oct; i++) {
-        v += Math.sin(x * freq + t * 1.1 + i * 2.3)
-           * Math.cos(y * freq * 0.9 + t * 0.8 + i * 1.7) * a;
+    function noise(x, y, t, freq, oct=4) {
+      let v=0, a=1, tot=0;
+      for (let i=0; i<oct; i++) {
+        v += Math.sin(x*freq + t*1.1 + i*2.3) * Math.cos(y*freq*0.9 + t*0.8 + i*1.7) * a;
         tot += a; freq *= 1.85; a *= 0.52;
       }
       return v / tot;
     }
 
     function buildPoints(s, t, r, ox, oy) {
-      const pts = [], n = 180;
-
-      // Direction stretch: elongate along travel vector
-      const spd   = Math.sqrt(bvx*bvx + bvy*bvy);
+      const pts=[], n=180;
+      const spd    = Math.sqrt(bvx*bvx + bvy*bvy);
       const maxSpd = 0.4 + s.speed * 2.8;
-      const stretch = Math.min(spd / (maxSpd || 1), 1) * 0.55;
+      const stretch = Math.min(spd / (maxSpd||1), 1) * 0.55;
       const tAngle  = Math.atan2(bvy, bvx);
-      const cosT = Math.cos(tAngle), sinT = Math.sin(tAngle);
+      const cosT=Math.cos(tAngle), sinT=Math.sin(tAngle);
 
-      for (let i = 0; i <= n; i++) {
-        const a  = (i / n) * Math.PI * 2;
+      // Apply permanent warp rotation to noise coordinate frame
+      const cosW = Math.cos(permWarp), sinW = Math.sin(permWarp);
+
+      for (let i=0; i<=n; i++) {
+        const a  = (i/n) * Math.PI * 2;
         const nx = Math.cos(a), ny = Math.sin(a);
-        const n1 = noise(nx, ny,     t,          1.2 + s.complexity * 2.5);
-        const n2 = noise(nx*2, ny*2, t * 1.3+5,  0.8 + s.chaos * 3.5);
-        const d  = (n1 * 0.6 + n2 * 0.4) * r * (0.1 + s.complexity * 0.65 + s.chaos * 0.55);
+        // Rotate + offset noise coords permanently
+        const wx = nx * cosW - ny * sinW + permSeed.x;
+        const wy = nx * sinW + ny * cosW + permSeed.y;
+        const n1 = noise(wx,   wy,   t,         1.2 + s.complexity * 2.5);
+        const n2 = noise(wx*2, wy*2, t*1.3+5,   0.8 + s.chaos * 3.5);
+        // Base noise deformation
+        let d = (n1*0.6 + n2*0.4) * r * (0.04 + s.complexity * 0.45 + s.chaos * 0.38);
+        // Add all permanent harmonic impressions (never reset)
+        for (const imp of impressions) {
+          d += Math.sin(a * imp.freq + imp.phase) * r * imp.amp;
+        }
 
-        // Base point
         let px = Math.cos(a) * (r + d);
         let py = Math.sin(a) * (r + d);
-
-        // 1. Squash & stretch + breathing
         px *= sqX * breathScale;
         py *= sqY * breathScale;
 
-        // 2. Direction stretch (rotate → scale → rotate back)
-        const lx =  px * cosT + py * sinT;  // local along travel
-        const ly = -px * sinT + py * cosT;  // local perpendicular
+        const lx =  px*cosT + py*sinT;
+        const ly = -px*sinT + py*cosT;
         const sx = lx * (1 + stretch * 0.55);
         const sy = ly * (1 - stretch * 0.28);
-        px = sx * cosT - sy * sinT;
-        py = sx * sinT + sy * cosT;
+        px = sx*cosT - sy*sinT;
+        py = sx*sinT + sy*cosT;
 
-        pts.push({ x: ox + px, y: oy + py });
+        pts.push({ x: ox+px, y: oy+py });
       }
       return pts;
     }
 
     function buildNucleus(s, t, r, ox, oy) {
-      const pts = [], n = 80;
-      for (let i = 0; i <= n; i++) {
-        const a = (i / n) * Math.PI * 2;
-        const nx = Math.cos(a), ny = Math.sin(a);
-        const d = noise(nx, ny, t * 0.6 + 10, 1.5 + s.complexity) * r * 0.35;
-        pts.push({ x: ox + Math.cos(a) * (r + d), y: oy + Math.sin(a) * (r + d) });
+      const pts=[], n=80;
+      const cosW = Math.cos(permWarp), sinW = Math.sin(permWarp);
+      for (let i=0; i<=n; i++) {
+        const a = (i/n) * Math.PI * 2;
+        const nx=Math.cos(a), ny=Math.sin(a);
+        const wx = nx*cosW - ny*sinW + permSeed.x * 0.5;
+        const wy = nx*sinW + ny*cosW + permSeed.y * 0.5;
+        const d = noise(wx, wy, t*0.6 + 10, 1.5+s.complexity) * r * 0.35;
+        pts.push({ x: ox+Math.cos(a)*(r+d), y: oy+Math.sin(a)*(r+d) });
       }
       return pts;
     }
 
     function tracePath(pts, dx, dy) {
       ctx.beginPath();
-      ctx.moveTo(pts[0].x + dx, pts[0].y + dy);
-      for (let i = 1; i < pts.length; i++) {
-        const p0 = pts[i-1], p1 = pts[i];
-        ctx.quadraticCurveTo(
-          p0.x + dx, p0.y + dy,
-          (p0.x + p1.x)/2 + dx, (p0.y + p1.y)/2 + dy
-        );
+      ctx.moveTo(pts[0].x+dx, pts[0].y+dy);
+      for (let i=1; i<pts.length; i++) {
+        const p0=pts[i-1], p1=pts[i];
+        ctx.quadraticCurveTo(p0.x+dx, p0.y+dy, (p0.x+p1.x)/2+dx, (p0.y+p1.y)/2+dy);
       }
       ctx.closePath();
     }
 
-    function drawFill(pts, ox, oy, dx, dy, hShift, alpha, blur, r) {
-      const h   = ((current.hue + hShift) % 360 + 360) % 360;
+    function drawFill(pts, ox, oy, dx, dy, hShift, alpha, blur, r, overrideHue) {
+      const h   = ((( overrideHue ?? current.hue) + hShift) % 360 + 360) % 360;
       const sat = Math.round(current.saturation * 100);
       const bri = Math.round(30 + current.brightness * 55);
       ctx.save();
       ctx.filter = `blur(${blur}px)`;
       tracePath(pts, dx, dy);
-      const g = ctx.createRadialGradient(ox+dx, oy+dy, 0, ox+dx, oy+dy, r * 1.2);
+      const g = ctx.createRadialGradient(ox+dx, oy+dy, 0, ox+dx, oy+dy, r*1.2);
       g.addColorStop(0,    `hsla(${h},${sat}%,${Math.min(bri+28,96)}%,${alpha})`);
       g.addColorStop(0.55, `hsla(${(h+20)%360},${sat}%,${bri}%,${alpha*0.88})`);
       g.addColorStop(1,    `hsla(${(h+45)%360},${Math.max(sat-15,0)}%,${Math.max(bri-12,8)}%,${alpha*0.5})`);
@@ -367,9 +811,44 @@
     function showLabel(text, count) {
       labelEl.textContent = text;
       labelEl.classList.add('visible');
-      countEl.textContent = `${count} contribution${count !== 1 ? 's' : ''}`;
+      countEl.textContent = `${count} voice${count!==1?'s':''}`;
       clearTimeout(labelTimeout);
-      labelTimeout = setTimeout(() => labelEl.classList.remove('visible'), 3200);
+      labelTimeout = setTimeout(() => labelEl.classList.remove('visible'), 4000);
+    }
+
+    let milestoneTimeout;
+    function showMilestone(count) {
+      const msgs = { 10:'10 voices', 25:'25 voices', 50:'50 voices', 75:'75 voices', 100:'100 voices' };
+      milestoneEl.textContent = msgs[count] || `${count} voices`;
+      milestoneEl.classList.add('visible');
+      clearTimeout(milestoneTimeout);
+      milestoneTimeout = setTimeout(() => milestoneEl.classList.remove('visible'), 3500);
+    }
+
+    // ── Chat feed ─────────────────────────────────────────────────────────────
+    const MAX_CHAT_ITEMS = 18;
+
+    function addChatItem({ text, label }) {
+      const item = document.createElement('div');
+      item.className = 'chat-item fresh';
+      item.innerHTML = `
+        <div class="chat-text-col">
+          <div class="chat-input">${escapeHtml(text)}</div>
+          <div class="chat-label">${escapeHtml(label)}</div>
+        </div>`;
+      chatList.appendChild(item);
+
+      // Remove fresh highlight after 4s
+      setTimeout(() => item.classList.remove('fresh'), 4000);
+
+      // Keep list trimmed
+      while (chatList.children.length > MAX_CHAT_ITEMS) {
+        chatList.removeChild(chatList.firstChild);
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
 
     // ── Draw loop ─────────────────────────────────────────────────────────────
@@ -381,29 +860,44 @@
 
       springStep();
       updatePosition(s);
-      updateSquash(s);
+      updateSquash();
       updateBreath(s);
       updateSound(s);
 
+      const drawHue = getDrawHue();
+
       // Dark trail
-      ctx.fillStyle = 'rgba(5,5,16,0.15)';
+      ctx.fillStyle = 'rgba(5,5,16,0.18)';
       ctx.fillRect(0, 0, W, H);
 
-      const r = Math.min(W, H) * 0.25 * s.size;
+      // ── Update & draw mitosis cells (behind main blob) — permanent, never removed ──
+      const minCX = 30, maxCX = W - SIDEBAR_W - 30;
+      for (const cell of cells) {
+        cell.x += cell.vx; cell.y += cell.vy;
+        cell.vx *= 0.990;  cell.vy *= 0.990; // heavy drag — slow organic drift
+        // Soft wall repulsion (no hard bounce — just push back gently)
+        if (cell.x < minCX) cell.vx += 0.05;
+        if (cell.x > maxCX) cell.vx -= 0.05;
+        if (cell.y < 30)    cell.vy += 0.05;
+        if (cell.y > H-30)  cell.vy -= 0.05;
+        drawCell(cell, drawHue);
+      }
+
+      const r   = Math.min(W - SIDEBAR_W, H) * 0.25 * s.size * (1 + permanentSizeBoost);
       const pts = buildPoints(s, t, r, bx, by);
-      const ab  = 3 + s.chaos * 30; // aberration amount
+      const ab  = 3 + s.chaos * 28;
 
       // Glow
       const glows = [
-        { blur: 110 + s.chaos * 80, alpha: 0.06 },
-        { blur: 55  + s.speed * 22, alpha: 0.10 },
-        { blur: 24,                  alpha: 0.17 },
+        { blur: 110 + s.chaos*80,  alpha: 0.06 },
+        { blur: 55  + s.speed*22,  alpha: 0.10 },
+        { blur: 24,                alpha: 0.17 },
       ];
       for (const g of glows) {
         ctx.save();
         ctx.filter = `blur(${g.blur}px)`;
         tracePath(pts, 0, 0);
-        const h   = Math.round(s.hue);
+        const h   = Math.round(drawHue);
         const sat = Math.round(s.saturation * 100);
         const bri = Math.round(30 + s.brightness * 55);
         ctx.fillStyle = `hsla(${h},${sat}%,${bri}%,${g.alpha})`;
@@ -414,18 +908,18 @@
       // Chromatic aberration — screen blend
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
-      drawFill(pts, bx, by, -ab,        0,           -25, 0.72, 1.5, r);
-      drawFill(pts, bx, by,   0, ab * 0.3,            10, 0.72, 1.5, r);
-      drawFill(pts, bx, by,  ab,        0,             35, 0.72, 1.5, r);
+      drawFill(pts, bx, by, -ab,       0,          -25, 0.72, 1.5, r, drawHue);
+      drawFill(pts, bx, by,   0, ab*0.3,             10, 0.72, 1.5, r, drawHue);
+      drawFill(pts, bx, by,  ab,       0,             35, 0.72, 1.5, r, drawHue);
       ctx.restore();
 
       // Crisp core
       ctx.save();
       ctx.globalCompositeOperation = 'source-over';
-      drawFill(pts, bx, by, 0, 0, 0, 0.5, 0.8, r);
+      drawFill(pts, bx, by, 0, 0, 0, 0.5, 0.8, r, drawHue);
       ctx.restore();
 
-      // Nucleus — small inner blob, offset, drifts slowly
+      // Nucleus
       const nAngle = t * 0.18;
       const nDrift = r * 0.22;
       const nx = bx + Math.cos(nAngle) * nDrift;
@@ -436,7 +930,7 @@
       ctx.globalCompositeOperation = 'source-over';
       ctx.filter = 'blur(6px)';
       tracePath(nucleusPts, 0, 0);
-      const nh = ((s.hue + 45) % 360);
+      const nh = ((drawHue + 45) % 360);
       const ng = ctx.createRadialGradient(nx, ny, 0, nx, ny, nr);
       ng.addColorStop(0,   `hsla(${nh},${Math.round(s.saturation*100)}%,88%,0.55)`);
       ng.addColorStop(0.6, `hsla(${nh},${Math.round(s.saturation*80)}%,65%,0.3)`);
@@ -445,20 +939,137 @@
       ctx.fill();
       ctx.restore();
 
+      // ── Balloon specular highlights ───────────────────────────────────────
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      tracePath(pts, 0, 0);
+      ctx.clip();
+
+      // Main highlight — large soft white oval, upper-left
+      const hlX = bx - r * 0.24 * sqX;
+      const hlY = by - r * 0.30 * sqY;
+      const hlR = r * 0.52 * breathScale;
+      const hlG = ctx.createRadialGradient(hlX, hlY, 0, hlX, hlY, hlR);
+      hlG.addColorStop(0,   'rgba(255,255,255,0.55)');
+      hlG.addColorStop(0.38,'rgba(255,255,255,0.22)');
+      hlG.addColorStop(1,   'rgba(255,255,255,0)');
+      ctx.fillStyle = hlG;
+      ctx.fillRect(bx - r*1.5, by - r*1.5, r*3, r*3);
+
+      // Small crisp specular spot
+      const spX = bx - r * 0.30 * sqX;
+      const spY = by - r * 0.38 * sqY;
+      const spR = r * 0.15 * breathScale;
+      const spG = ctx.createRadialGradient(spX, spY, 0, spX, spY, spR);
+      spG.addColorStop(0,   'rgba(255,255,255,0.92)');
+      spG.addColorStop(0.45,'rgba(255,255,255,0.4)');
+      spG.addColorStop(1,   'rgba(255,255,255,0)');
+      ctx.fillStyle = spG;
+      ctx.fillRect(spX - spR, spY - spR, spR*2, spR*2);
+
+      ctx.restore();
+
+      // ── Milestone pulse rings ──────────────────────────────────────────────
+      if (milestoneFlash) {
+        const age = Date.now() - milestoneFlash.startTime;
+        const dur = 2800;
+        if (age < dur) {
+          const p = age / dur;
+          ctx.save();
+          for (let ring = 0; ring < 3; ring++) {
+            const rp = Math.max(0, p - ring * 0.15);
+            if (rp <= 0) continue;
+            const ringR = r * (1.1 + rp * 2.8);
+            const alpha = (1 - rp) * (0.5 - ring * 0.15);
+            ctx.beginPath();
+            ctx.arc(bx, by, ringR, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
+            ctx.lineWidth = Math.max(0.5, 3 * (1 - rp));
+            ctx.stroke();
+          }
+          ctx.restore();
+        } else {
+          milestoneFlash = null;
+        }
+      }
+
       requestAnimationFrame(draw);
     }
 
     // ── Socket ────────────────────────────────────────────────────────────────
     const socket = io();
+
     socket.on('state', (state) => {
-      // Velocity kick for overshoot
+      if (isFrozen) return;
+      const isNewPrompt = state.promptCount > (target.promptCount || 0);
       for (const k of KEYS) {
         if (k === 'hue') vel[k] += hueDiff(current[k], state[k]) * 0.45;
         else             vel[k] += (state[k] - current[k]) * 0.45;
       }
-      target = { hue:state.hue, saturation:state.saturation, brightness:state.brightness,
-                 speed:state.speed, complexity:state.complexity, size:state.size, chaos:state.chaos };
+      target = {
+        hue: state.hue, saturation: state.saturation, brightness: state.brightness,
+        speed: state.speed, complexity: state.complexity, size: state.size, chaos: state.chaos,
+        rainbow: state.rainbow || false,
+        emoji: state.emoji || '',
+        label: state.label || '',
+        promptCount: state.promptCount || 0,
+      };
       if (state.label) showLabel(state.label, state.promptCount || 0);
+      if (isNewPrompt) {
+        evolveDNA();
+        // Base: ~0.25 per prompt → every 4 prompts. Intense emotions nudge toward every 2-3.
+        const intensity = (target.chaos + target.speed) / 2;
+        spawnEnergy += 0.25 + intensity * 0.20;
+        while (spawnEnergy >= 1.0 && cells.length < MAX_CELLS) {
+          spawnEnergy -= 1.0;
+          const delay = 600 + Math.random() * 1400; // staggered so it feels organic
+          setTimeout(spawnCell, delay);
+        }
+      }
+    });
+
+    socket.on('chat', (msg) => {
+      addChatItem(msg);
+    });
+
+    socket.on('queue_update', ({ queueLength }) => {
+      chatQueue.textContent = queueLength > 0 ? `${queueLength} in queue` : '';
+    });
+
+    socket.on('milestone', ({ count }) => {
+      milestoneFlash = { startTime: Date.now(), count };
+      showMilestone(count);
+    });
+
+    socket.on('freeze', () => {
+      isFrozen = true;
+      frozenBar.style.display = 'block';
+    });
+
+    socket.on('unfreeze', () => {
+      isFrozen = false;
+      frozenBar.style.display = 'none';
+    });
+
+    socket.on('reset', () => {
+      cells = [];
+      impressions = [];
+      permSeed = { x: 0, y: 0 };
+      permWarp = 0;
+      rainbowT = 0;
+      permanentSizeBoost = 0;
+      spawnEnergy = 0;
+      current = { hue:200, saturation:0.45, brightness:0.55, speed:0.1, complexity:0.15, size:0.3, chaos:0.05 };
+      target = { ...current, rainbow: false, emoji: '', label: '', promptCount: 0 };
+      vel = { hue:0, saturation:0, brightness:0, speed:0, complexity:0, size:0, chaos:0 };
+      while (chatList.firstChild) chatList.removeChild(chatList.firstChild);
+      chatQueue.textContent = '';
+      labelEl.classList.remove('visible');
+      countEl.textContent = '0 contributions';
+    });
+
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      fetch('/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
     });
 
     draw();

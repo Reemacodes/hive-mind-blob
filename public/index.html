@@ -111,10 +111,10 @@
     <h1>Hive Mind</h1>
   </div>
 
-  <p class="sub">Shape the blob on screen.<br>Describe how it should feel, look, or move.</p>
+  <p class="sub">Shape the blob on screen.<br>Describe how it should feel, look, or move.<br><span style="color:rgba(255,255,255,0.2)">Beschreib wie es sich anfühlen soll.</span></p>
 
   <div class="input-area">
-    <textarea id="prompt" placeholder="anxious · melancholy · playful · powerful · alive…" maxlength="120" rows="3"></textarea>
+    <textarea id="prompt" placeholder="anxious · melancholy · playful · fire · ocean · traurig · aufgeregt · Feuer…" maxlength="120" rows="3"></textarea>
     <button id="send">Shape it</button>
     <div class="feedback" id="feedback"></div>
   </div>
@@ -226,7 +226,8 @@
         });
         const data = await res.json();
         if (res.ok) {
-          feedbackEl.textContent = `"${data.label}" — the blob felt that`;
+          const pos = data.position || 1;
+          feedbackEl.textContent = pos <= 1 ? 'shaping the blob now…' : `queued — #${pos} in line`;
           feedbackEl.className = 'feedback success';
           promptEl.value = '';
         } else {
@@ -238,7 +239,7 @@
         feedbackEl.className = 'feedback error';
       }
 
-      setTimeout(() => { sendBtn.disabled = false; }, 3000);
+      setTimeout(() => { sendBtn.disabled = false; }, 2500);
     }
 
     sendBtn.addEventListener('click', submit);
