@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const Anthropic = require('@anthropic-ai/sdk').default || require('@anthropic-ai/sdk');
+const https = require('https');
 const path = require('path');
 const os = require('os');
 
@@ -18,7 +18,42 @@ function getLocalIP() {
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
-const client = new Anthropic();
+const ANTHROPIC_API_KEY = (process.env.ANTHROPIC_API_KEY || '').replace(/\s+/g, '');
+
+function callClaude(prompt) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 300,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    const req = https.request({
+      hostname: 'api.anthropic.com',
+      path: '/v1/messages',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'Content-Length': Buffer.byteLength(body)
+      }
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.error) return reject(new Error(parsed.error.message));
+          resolve(parsed.content[0].text);
+        } catch (e) { reject(e); }
+      });
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -143,14 +178,8 @@ async function processNext() {
   io.emit('queue_update', { queueLength: promptQueue.length });
 
   try {
-    const message = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 300,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: item.text }]
-    });
-
-    const raw = message.content[0].text.trim()
+    const rawText = await callClaude(item.text);
+    const raw = rawText.trim()
       .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '');
     const incoming = JSON.parse(raw);
 
