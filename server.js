@@ -253,20 +253,13 @@ app.post('/prompt', (req, res) => {
 
 // Facilitator override
 app.post('/override', (req, res) => {
-  const { secret, params } = req.body;
-  if (secret !== process.env.FACILITATOR_SECRET && process.env.FACILITATOR_SECRET) {
-    return res.status(403).json({ error: 'Unauthorized' });
-  }
+  const { params } = req.body;
   state = { ...state, ...params };
   io.emit('state', state);
   res.json({ ok: true });
 });
 
 app.post('/reset', (req, res) => {
-  const { secret } = req.body || {};
-  if (secret !== process.env.FACILITATOR_SECRET && process.env.FACILITATOR_SECRET) {
-    return res.status(403).json({ error: 'Unauthorized' });
-  }
   promptQueue = [];
   queueProcessing = false;
   state = {
@@ -285,10 +278,7 @@ app.get('/state', (req, res) => res.json(state));
 
 // Inject a word at the front of the queue (facilitator seeding)
 app.post('/seed', (req, res) => {
-  const { secret, text } = req.body || {};
-  if (secret !== process.env.FACILITATOR_SECRET && process.env.FACILITATOR_SECRET) {
-    return res.status(403).json({ error: 'Unauthorized' });
-  }
+  const { text } = req.body || {};
   if (!text || text.trim().length === 0) return res.status(400).json({ error: 'Empty' });
   promptQueue.unshift({ text: text.trim(), session: 'facilitator', ts: Date.now() });
   io.emit('queue_update', { queueLength: promptQueue.length });
@@ -298,10 +288,6 @@ app.post('/seed', (req, res) => {
 
 // Freeze / unfreeze — pauses queue and idle drift, holds current visual state
 app.post('/freeze', (req, res) => {
-  const { secret } = req.body || {};
-  if (secret !== process.env.FACILITATOR_SECRET && process.env.FACILITATOR_SECRET) {
-    return res.status(403).json({ error: 'Unauthorized' });
-  }
   frozen = !frozen;
   io.emit(frozen ? 'freeze' : 'unfreeze');
   res.json({ ok: true, frozen });
