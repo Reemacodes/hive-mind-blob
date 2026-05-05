@@ -168,19 +168,12 @@
   const socket = io();
   let isFrozen = false;
 
-  // ── Secret ────────────────────────────────────────────────────────────────
-  let _secret = localStorage.getItem('facilitator_secret') || '';
-  if (!_secret) {
-    _secret = prompt('Enter facilitator password:') || '';
-    if (_secret) localStorage.setItem('facilitator_secret', _secret);
-  }
-
   // ── Helpers ──────────────────────────────────────────────────────────────
   async function post(url, body) {
     const r = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...body, secret: _secret }),
+      body: JSON.stringify(body),
     });
     return r.json();
   }
