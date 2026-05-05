@@ -280,7 +280,8 @@
 
   <div id="qr-corner">
     <div id="qr-hint">join at</div>
-    <div id="qr-code"></div>
+    <div id="qr-code"><img src="/qr-code.png" style="width:180px;height:180px;border-radius:6px;display:block;"></div>
+    <div style="font-family:monospace;font-size:0.55rem;color:rgba(255,255,255,0.25);letter-spacing:0.05em;text-align:center;margin-top:4px;max-width:180px;">bit.ly/42ehBdi</div>
   </div>
 
   <button id="mute-btn">♪ on</button>
@@ -317,20 +318,6 @@
     let milestoneFlash = null; // { startTime, count }
     let isFrozen = false;
 
-    // QR code — fetch network URL from server
-    fetch('/config').then(r => r.json()).then(({ audienceUrl }) => {
-      new QRCode(document.getElementById('qr-code'), {
-        text: audienceUrl,
-        width: 180, height: 180,
-        colorDark: '#ffffff', colorLight: '#050510',
-        correctLevel: QRCode.CorrectLevel.M,
-      });
-      // Show URL text below QR
-      const urlEl = document.createElement('div');
-      urlEl.style.cssText = 'font-family:monospace;font-size:0.55rem;color:rgba(255,255,255,0.25);letter-spacing:0.05em;text-align:center;margin-top:4px;max-width:180px;word-break:break-all;';
-      urlEl.textContent = audienceUrl.replace(/^https?:\/\//, '');
-      document.getElementById('qr-corner').appendChild(urlEl);
-    }).catch(() => {});
 
     // Activation overlay — one click initialises audio and removes itself
     activateOverlay.addEventListener('click', () => {
